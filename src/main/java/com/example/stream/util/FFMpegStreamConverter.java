@@ -1,4 +1,6 @@
-package com.example.stream;
+package com.example.stream.util;
+
+import org.springframework.beans.factory.annotation.Value;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -9,10 +11,10 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class FFMpegStreamConverter {
-
     private static final ConcurrentHashMap<String, Process> processMap = new ConcurrentHashMap<>();
 
-    public static Process startStream(String inputStreamUrl, String outputDirectory, String channelName) {
+    public static Process startStream(String inputStreamUrl,String outputDirectory, String channelName) {
+        System.out.println(outputDirectory);
         String channelNameFormat = channelName.replace("|US|", "").trim().replaceAll(" ", "_");
         List<String> command = new ArrayList<>();
         command.add("ffmpeg");
@@ -44,10 +46,10 @@ public class FFMpegStreamConverter {
             // Read the output and error streams in a separate thread
             new Thread(() -> {
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-//                    String line;
-//                    while ((line = reader.readLine()) != null) {
-////                        System.out.println(line);
-//                    }
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        System.out.println(line);
+                    }
                 } catch (IOException e) {
                     System.out.println("Error reading FFmpeg output: " + e.getMessage());
                 }

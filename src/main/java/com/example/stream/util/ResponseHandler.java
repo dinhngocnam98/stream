@@ -1,4 +1,4 @@
-package com.example.stream;
+package com.example.stream.util;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;

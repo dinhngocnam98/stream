@@ -1,6 +1,6 @@
 package com.example.stream.config;
 
-import com.example.stream.FFMpegStreamConverter;
+import com.example.stream.util.FFMpegStreamConverter;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Component;
