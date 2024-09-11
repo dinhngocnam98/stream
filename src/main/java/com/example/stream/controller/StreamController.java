@@ -1,5 +1,6 @@
 package com.example.stream.controller;
 
+import ch.qos.logback.core.util.FileUtil;
 import com.example.stream.util.FFMpegStreamConverter;
 import com.example.stream.util.ResponseHandler;
 import com.example.stream.dto.StreamDto;
@@ -13,9 +14,7 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,9 +23,10 @@ import java.util.List;
 public class StreamController {
     @Value("${spring.dirHLS}")
     private String outputDirectory;
+
     @GetMapping("list")
     private ResponseEntity<ResponseHandler> listChannel() {
-        try (BufferedReader br = new BufferedReader(new FileReader("./playlist/channel.txt"))) {
+        try (InputStream inputStream = FileUtil.class.getClassLoader().getResourceAsStream("channel.txt"); BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
             String line;
             List<String> channelList = new ArrayList<>();
             while ((line = br.readLine()) != null) {
@@ -51,7 +51,7 @@ public class StreamController {
         if (!valid) {
             return new ResponseEntity<>(ResponseHandler.errorString("Token invalid or expired",400), HttpStatus.BAD_REQUEST);
         }
-        try (BufferedReader br = new BufferedReader(new FileReader("./playlist/channel.txt"))) {
+        try (InputStream inputStream = FileUtil.class.getClassLoader().getResourceAsStream("channel.txt"); BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
             String line;
             while ((line = br.readLine()) != null) {
                 String channelName = new ChanelNameExtractor().extractChannelName(line).replace("http", "");
