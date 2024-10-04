@@ -2,6 +2,7 @@ HELP.md
 target/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
+src/main/resources/m3u8/**
 !**/src/test/**/target/
 
 ### STS ###

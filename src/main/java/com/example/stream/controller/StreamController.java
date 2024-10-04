@@ -1,44 +1,49 @@
 package com.example.stream.controller;
 
 import ch.qos.logback.core.util.FileUtil;
+import com.example.stream.service.StreamService;
 import com.example.stream.util.FFMpegStreamConverter;
 import com.example.stream.util.ResponseHandler;
 import com.example.stream.dto.StreamDto;
 import com.example.stream.util.ChanelNameExtractor;
 import com.example.stream.service.TokenService;
 import com.example.stream.util.URLExtractor;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
-
+import org.springframework.core.io.ResourceLoader;
 import java.io.*;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
 
 @RestController
 public class StreamController {
-    @Value("${spring.dirHLS}")
-    private String outputDirectory;
+
+    private final StreamService streamService;
+    private final ResourceLoader resourceLoader;
+
+    public StreamController(StreamService streamService,ResourceLoader resourceLoader) {
+        this.streamService = streamService;
+        this.resourceLoader = resourceLoader;
+    }
 
     @GetMapping("list")
     private ResponseEntity<ResponseHandler> listChannel() {
-        try (InputStream inputStream = FileUtil.class.getClassLoader().getResourceAsStream("channel.txt"); BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
-            String line;
-            List<String> channelList = new ArrayList<>();
-            while ((line = br.readLine()) != null) {
-                String channelName = new ChanelNameExtractor().extractChannelName(line).replace("http", "");
-                channelList.add(channelName);
-            }
-             return new ResponseEntity<>(ResponseHandler.success(channelList), HttpStatus.OK);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return new ResponseEntity<>(ResponseHandler.errorString("Failed to get channel list",400), HttpStatus.BAD_REQUEST);
-        }
+        List<ObjectNode> channelList = streamService.listChannel(true);
+        return new ResponseEntity<>(ResponseHandler.success(channelList), HttpStatus.OK);
     }
+
 
     @GetMapping("/listProcess")
     public ResponseEntity<ResponseHandler> listStreams() {
@@ -47,39 +52,32 @@ public class StreamController {
 
     @PostMapping("startStreamChannel")
     public ResponseEntity<ResponseHandler> startSteamChannel(@RequestBody StreamDto streamDto) {
-        boolean valid = new TokenService().validateToken(streamDto.getToken());
-        if (!valid) {
-            return new ResponseEntity<>(ResponseHandler.errorString("Token invalid or expired",400), HttpStatus.BAD_REQUEST);
-        }
-        try (InputStream inputStream = FileUtil.class.getClassLoader().getResourceAsStream("channel.txt"); BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                String channelName = new ChanelNameExtractor().extractChannelName(line).replace("http", "");
-                if (channelName.equals(streamDto.getChannel())) {
-                    if (FFMpegStreamConverter.channelExists(streamDto.getChannel())) {
-                        return new ResponseEntity<>(ResponseHandler.success(true), HttpStatus.OK);
-                    }
-                    String extractedStreamURL = URLExtractor.extractURL(line);
-                    Process process = FFMpegStreamConverter.startStream(extractedStreamURL,outputDirectory, streamDto.getChannel());
-                    if (process != null) {
-                        return new ResponseEntity<>(ResponseHandler.success(true), HttpStatus.OK);
-                    } else {
-                        return new ResponseEntity<>(ResponseHandler.errorString("Failed to start channel",400), HttpStatus.BAD_REQUEST);
-                    }
-                }
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
+//        boolean valid = new TokenService().validateToken(streamDto.getToken());
+//        if (!valid) {
+//            return new ResponseEntity<>(ResponseHandler.errorString("Token invalid or expired",400), HttpStatus.BAD_REQUEST);
+//        }
+        this.streamService.startStreamChannel(streamDto);
+        return new ResponseEntity<>(ResponseHandler.success(true), HttpStatus.OK);
+    }
+
+    @GetMapping("/stream")
+    public ResponseEntity<Resource> getM3u8File() {
+        // Đường dẫn tương đối đến tệp .m3u8
+        Path path = Paths.get("src/main/resources/m3u8/SportsGrid.m3u8"); // Điều chỉnh đường dẫn tương đối phù hợp với vị trí của tệp
+        Resource resource = resourceLoader.getResource("file:" + path.toAbsolutePath().toString());
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=SportsGrid.m3u8")
+                .contentType(MediaType.parseMediaType("application/vnd.apple.mpegurl"))
+                .body(resource);
     }
 
     @PostMapping("/stopStreamChannel")
     public ResponseEntity<ResponseHandler> stopStreamChannel(@RequestBody StreamDto streamDto) {
-        boolean valid = new TokenService().validateToken(streamDto.getToken());
-        if (!valid) {
-            return new ResponseEntity<>(ResponseHandler.errorString("Token invalid or expired",400), HttpStatus.BAD_REQUEST);
-        }
+//        boolean valid = new TokenService().validateToken(streamDto.getToken());
+//        if (!valid) {
+//            return new ResponseEntity<>(ResponseHandler.errorString("Token invalid or expired",400), HttpStatus.BAD_REQUEST);
+//        }
         boolean stop = FFMpegStreamConverter.stopStream(streamDto.getChannel());
         if (stop) {
             return new ResponseEntity<>(ResponseHandler.success("Stream stopped successfully for channel: " + streamDto.getChannel()), HttpStatus.OK);
@@ -100,7 +98,7 @@ public class StreamController {
         TokenService tokenService = new TokenService();
         boolean valid = tokenService.validateToken(token);
         if (!valid) {
-            return new ResponseEntity<>(ResponseHandler.errorString("Token invalid or expired",400), HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(ResponseHandler.errorString("Token invalid or expired", 400), HttpStatus.BAD_REQUEST);
         }
         return new ResponseEntity<>(ResponseHandler.success(token), HttpStatus.OK);
     }

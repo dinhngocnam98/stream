@@ -17,16 +17,16 @@ public class StreamApplication {
         SpringApplication.run(StreamApplication.class, args);
     }
 
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(Collections.singletonList("*")); // Cho phép từ mọi origin
-        config.setAllowedMethods(Collections.singletonList("*")); // Cho phép tất cả phương thức
-        config.setAllowedHeaders(Collections.singletonList("*")); // Cho phép tất cả headers
-        config.setAllowCredentials(true); // Cho phép credentials
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource(new PathPatternParser());
-        source.registerCorsConfiguration("/**", config);
-        return source;
-    }
+//    @Bean
+//    public CorsConfigurationSource corsConfigurationSource() {
+//        CorsConfiguration config = new CorsConfiguration();
+//        config.setAllowedOrigins(Collections.singletonList("*")); // Cho phép từ mọi origin
+//        config.setAllowedMethods(Collections.singletonList("*")); // Cho phép tất cả phương thức
+//        config.setAllowedHeaders(Collections.singletonList("*")); // Cho phép tất cả headers
+//        config.setAllowCredentials(true); // Cho phép credentials
+//
+//        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource(new PathPatternParser());
+//        source.registerCorsConfiguration("/**", config);
+//        return source;
+//    }
 }

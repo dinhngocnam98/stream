@@ -14,7 +14,6 @@ public class FFMpegStreamConverter {
     private static final ConcurrentHashMap<String, Process> processMap = new ConcurrentHashMap<>();
 
     public static Process startStream(String inputStreamUrl,String outputDirectory, String channelName) {
-        System.out.println(outputDirectory);
         String channelNameFormat = channelName.replace("|US|", "").trim().replaceAll(" ", "_");
         List<String> command = new ArrayList<>();
         command.add("ffmpeg");
@@ -28,9 +27,9 @@ public class FFMpegStreamConverter {
         command.add("-f");
         command.add("hls");
         command.add("-hls_time");
-        command.add("1");
-        command.add("-hls_list_size");
         command.add("10");
+        command.add("-hls_list_size");
+        command.add("2");
         command.add("-hls_flags");
         command.add("delete_segments+split_by_time");
 //        command.add("-hls_playlist_type");
