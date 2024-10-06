@@ -21,7 +21,7 @@ public class WebFluxConfig implements WebFluxConfigurer {
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // Cấu hình resource static
         registry.addResourceHandler("/m3u8/**")
-                .addResourceLocations("classpath:/m3u8/");
+                .addResourceLocations("file:/root/m3u8/");
     }
 
 }

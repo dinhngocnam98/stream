@@ -40,7 +40,7 @@ public class StreamController {
 
     @GetMapping("list")
     private ResponseEntity<ResponseHandler> listChannel() {
-        List<ObjectNode> channelList = streamService.listChannel(true);
+        List<ObjectNode> channelList = streamService.listChannel(false);
         return new ResponseEntity<>(ResponseHandler.success(channelList), HttpStatus.OK);
     }
 
@@ -70,6 +70,22 @@ public class StreamController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=SportsGrid.m3u8")
                 .contentType(MediaType.parseMediaType("application/vnd.apple.mpegurl"))
                 .body(resource);
+    }
+
+    @GetMapping("/api/m3u8")
+    public ResponseEntity<Resource> getM3u8File(@RequestParam String fileName) {
+        try {
+            Resource resource = resourceLoader.getResource("file:///root/m3u8/" + fileName);
+            if (resource.exists()) {
+                return ResponseEntity.ok()
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                        .body(resource);
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
     }
 
     @PostMapping("/stopStreamChannel")

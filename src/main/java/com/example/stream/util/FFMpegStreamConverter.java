@@ -13,13 +13,15 @@ import java.util.concurrent.ConcurrentHashMap;
 public class FFMpegStreamConverter {
     private static final ConcurrentHashMap<String, Process> processMap = new ConcurrentHashMap<>();
 
-    public static Process startStream(String inputStreamUrl,String outputDirectory, String channelName) {
+    public static Process startStream(String inputStreamUrl, String outputDirectory, String channelName) {
         String channelNameFormat = channelName.replace("|US|", "").trim().replaceAll(" ", "_");
         List<String> command = new ArrayList<>();
         command.add("ffmpeg");
         command.add("-i");  // Input
         command.add(inputStreamUrl);  // Stream URL
         command.add("-hide_banner");
+        command.add("-loglevel");
+        command.add("quiet");
         command.add("-c:v");
         command.add("libx264");
         command.add("-c:a");
@@ -27,9 +29,9 @@ public class FFMpegStreamConverter {
         command.add("-f");
         command.add("hls");
         command.add("-hls_time");
-        command.add("10");
+        command.add("5");
         command.add("-hls_list_size");
-        command.add("2");
+        command.add("10");
         command.add("-hls_flags");
         command.add("delete_segments+split_by_time");
 //        command.add("-hls_playlist_type");
