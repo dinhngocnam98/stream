@@ -14,6 +14,7 @@ public class ProcessManager {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             System.out.println("Shutting down, stopping all streams...");
             FFMpegStreamConverter.stopAllStreams();
+            System.out.println("Shutting down, stopping all streams done");
         }));
     }
 
@@ -22,5 +23,6 @@ public class ProcessManager {
         // Cleanup logic if needed
         System.out.println("Cleaning up resources...");
         FFMpegStreamConverter.stopAllStreams();
+        System.out.println("Cleaning up resources done");
     }
 }
