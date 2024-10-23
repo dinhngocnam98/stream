@@ -3,11 +3,8 @@ package com.example.stream.util;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -20,10 +17,20 @@ public class FFMpegStreamConverter {
 
     public static void startStream(String inputStreamUrl, String outputDirectory, String channelBase64, String channelName) {
         System.out.println("===============Starting FFMpegStreamConverter=============== :" + channelName + "(" + channelBase64 + ")");
+
+        File directory = new File(outputDirectory, channelBase64);
+        if (!directory.exists()) {
+            if (directory.mkdirs()) {
+                System.out.println("Directory created: " + directory.getAbsolutePath());
+            } else {
+                System.err.println("Failed to create directory: " + directory.getAbsolutePath());
+                return; // Ngừng nếu không thể tạo thư mục
+            }
+        }
+
         List<String> command = buildFfmpegCommand(inputStreamUrl, outputDirectory, channelBase64);
         ProcessBuilder processBuilder = new ProcessBuilder(command);
         processBuilder.redirectErrorStream(true);  // Kế thừa luồng output và error
-
         try {
             Process process = processBuilder.start();
             processMap.put(channelBase64, process);  // Lưu process vào map
@@ -49,13 +56,11 @@ public class FFMpegStreamConverter {
                 "-hide_banner", "-loglevel", "quiet",
                 "-c", "copy",  // Copy video và audio mà không xử lý
                 "-f", "hls", "-hls_time", "4",  // Giảm thời gian mỗi segment
-                "-hls_list_size", "20",  // Giảm danh sách segment
+                "-hls_list_size", "50",  // Giảm danh sách segment
                 "-hls_flags", "delete_segments+append_list",  // Không xóa segment cũ
                 "-tune", "zerolatency",  // Tối ưu hóa cho livestream độ trễ thấp
                 outputDirectory + "/" + channelBase64 + "/" + channelBase64 + ".m3u8"  // Output file
         );
-
-
     }
 
     private static void handleProcessOutput(Process process, String outputDirectory, String channelBase64, String channelName) throws IOException {
