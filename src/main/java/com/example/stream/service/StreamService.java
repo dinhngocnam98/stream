@@ -4,14 +4,28 @@ import com.example.stream.dto.StreamDto;
 import com.example.stream.util.ChanelNameExtractor;
 import com.example.stream.util.FFMpegStreamConverter;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.json.XML;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.w3c.dom.Document;
+import org.xml.sax.InputSource;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 import java.io.*;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -67,7 +81,6 @@ public class StreamService {
     }
 
 
-
     public String startStreamChannel(StreamDto streamDto) throws IOException {
         List<ObjectNode> listChannel = readChannelsFromFile(true);
         String extractedStreamURL = "";
@@ -93,27 +106,48 @@ public class StreamService {
 
     public void listChannel(Boolean isGetUrlStream) throws IOException {
         String response = restTemplate.getForObject("https://stream-proxy.hakinam2701.workers.dev/playlist", String.class);
+        List<ObjectNode> allPrograms = fetchAllPrograms();
         String[] listResponse = response.split("\n");
         List<ObjectNode> channelList = new ArrayList<>();
         Set<String> uniqueChannelNames = new HashSet<>();
         ObjectMapper mapper = new ObjectMapper();
-        int id = 1;
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss Z");
         for (String line : listResponse) {
             String groupTitle = new ChanelNameExtractor().extractGroup(line);
             String logo = new ChanelNameExtractor().extractLogo(line);
             String channelName = new ChanelNameExtractor().extractChannelName(line);
+            String channelId = new ChanelNameExtractor().extractId(line);
             ObjectNode channelNode = mapper.createObjectNode();
             if (groupTitle != null && uniqueChannelNames.add(channelName)) {
                 channelNode.put("name", channelName);
                 channelNode.put("group", groupTitle);
                 channelNode.put("logo", logo);
-                channelNode.put("id", id++);
+                channelNode.put("id", channelId);
+                List<ObjectNode> programsForChannel = allPrograms.stream()
+                        .filter(program -> program.get("channel").asText().equals(channelId)) // Lọc chương trình theo channelId
+                        .sorted((p1, p2) -> {
+                            OffsetDateTime start1 = OffsetDateTime.parse(p1.get("start").asText(), formatter);
+                            OffsetDateTime start2 = OffsetDateTime.parse(p2.get("start").asText(), formatter);
+                            return start1.compareTo(start2); // So sánh thời gian
+                        })
+                        .toList();
+                ArrayNode programsArray = mapper.createArrayNode();
+                for (ObjectNode program : programsForChannel) {
+                    ObjectNode programNode = mapper.createObjectNode();
+                    programNode.put("name", program.get("title").asText());
+                    programNode.put("start", program.get("start").asText());
+                    programNode.put("stop", program.get("stop").asText());
+                    programNode.put("category", program.get("category").asText());
+                    programNode.put("channelId", program.get("channel").asText());
+                    programsArray.add(programNode); // Thêm programNode vào programsArray
+                }
+                channelNode.set("programmes", programsArray);
                 channelList.add(channelNode);
             }
             if (isGetUrlStream) {
                 String streamUrl = new ChanelNameExtractor().extractStreamUrl(line);
                 for (ObjectNode currentNode : channelList) {
-                    if (currentNode.get("id").asInt() == (id - 1)) {
+                    if (streamUrl != null && streamUrl.contains(currentNode.get("id").asText())) {
                         currentNode.put("streamUrl", streamUrl);
                         break;
                     }
@@ -124,6 +158,39 @@ public class StreamService {
 
         formatChannelList(channelList);
         saveToFile(channelList);
+    }
+
+    public List<ObjectNode> fetchAllPrograms() {
+        String apiUrl = "https://stream-proxy.hakinam2701.workers.dev/epg"; // URL của API trả về toàn bộ chương trình
+        String xmlResponse = restTemplate.getForObject(apiUrl, String.class);
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document doc = builder.parse(new InputSource(new StringReader(xmlResponse)));
+
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+            DOMSource source = new DOMSource(doc);
+            StringWriter writer = new StringWriter();
+            StreamResult result = new StreamResult(writer);
+            transformer.transform(source, result);
+            String xmlString = writer.toString();
+            JSONObject jsonObject = XML.toJSONObject(xmlString);
+            JSONObject channelData = jsonObject.getJSONObject("tv");
+            JSONArray programmes = channelData.getJSONArray("programme");
+            List<ObjectNode> programmeList = new ArrayList<>();
+            ObjectMapper mapper = new ObjectMapper();
+            for (int i = 0; i < programmes.length(); i++) {
+                JSONObject jsonProgramme = programmes.getJSONObject(i);
+                JsonNode jsonNode = mapper.readTree(jsonProgramme.toString());
+                ObjectNode objectNode = (ObjectNode) jsonNode;
+                programmeList.add(objectNode);
+            }
+            return programmeList;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     private void saveToFile(List<ObjectNode> channelList) throws IOException {
