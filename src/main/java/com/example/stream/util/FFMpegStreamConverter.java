@@ -15,10 +15,10 @@ import java.util.concurrent.TimeUnit;
 public class FFMpegStreamConverter {
     private static final ConcurrentHashMap<String, Process> processMap = new ConcurrentHashMap<>();
 
-    public static void startStream(String inputStreamUrl, String outputDirectory, String channelBase64, String channelName) {
-        System.out.println("===============Starting FFMpegStreamConverter=============== :" + channelName + "(" + channelBase64 + ")");
+    public static void startStream(String inputStreamUrl, String outputDirectory, String channelId, String channelName) {
+        System.out.println("===============Starting FFMpegStreamConverter=============== :" + channelName + "(" + channelId + ")");
 
-        File directory = new File(outputDirectory, channelBase64);
+        File directory = new File(outputDirectory, channelId);
         if (!directory.exists()) {
             if (directory.mkdirs()) {
                 System.out.println("Directory created: " + directory.getAbsolutePath());
@@ -28,17 +28,17 @@ public class FFMpegStreamConverter {
             }
         }
 
-        List<String> command = buildFfmpegCommand(inputStreamUrl, outputDirectory, channelBase64);
+        List<String> command = buildFfmpegCommand(inputStreamUrl, outputDirectory, channelId);
         ProcessBuilder processBuilder = new ProcessBuilder(command);
         processBuilder.redirectErrorStream(true);  // Kế thừa luồng output và error
         try {
             Process process = processBuilder.start();
-            processMap.put(channelBase64, process);  // Lưu process vào map
+            processMap.put(channelId, process);  // Lưu process vào map
 
             // Khởi chạy một thread để theo dõi tiến trình
             new Thread(() -> {
                 try {
-                    handleProcessOutput(process, outputDirectory, channelBase64, channelName);
+                    handleProcessOutput(process, outputDirectory, channelId, channelName);
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -49,7 +49,7 @@ public class FFMpegStreamConverter {
         }
     }
 
-    private static List<String> buildFfmpegCommand(String inputStreamUrl, String outputDirectory, String channelBase64) {
+    private static List<String> buildFfmpegCommand(String inputStreamUrl, String outputDirectory, String channelId) {
         return Arrays.asList(
                 "ffmpeg", "-re",
                 "-i", inputStreamUrl,  // Input livestream URL
@@ -59,21 +59,21 @@ public class FFMpegStreamConverter {
                 "-hls_list_size", "50",  // Giảm danh sách segment
                 "-hls_flags", "delete_segments+append_list",  // Không xóa segment cũ
                 "-tune", "zerolatency",  // Tối ưu hóa cho livestream độ trễ thấp
-                outputDirectory + "/" + channelBase64 + "/" + channelBase64 + ".m3u8"  // Output file
+                outputDirectory + "/" + channelId + "/" + channelId + ".m3u8"  // Output file
         );
     }
 
-    private static void handleProcessOutput(Process process, String outputDirectory, String channelBase64, String channelName) throws IOException {
+    private static void handleProcessOutput(Process process, String outputDirectory, String channelId, String channelName) throws IOException {
         try {
             int exitCode = process.waitFor();
             if (exitCode != 0) {
-                System.err.println(channelName + " (" + channelBase64 + "): FFmpeg process failed with exit code " + exitCode);
+                System.err.println(channelName + " (" + channelId + "): FFmpeg process failed with exit code " + exitCode);
             } else {
-                System.err.println(channelName + " (" + channelBase64 + "): Stream stopped");
+                System.err.println(channelName + " (" + channelId + "): Stream stopped");
             }
-            cleanUpFiles(outputDirectory, channelBase64);  // Xóa file nếu có lỗi
+            cleanUpFiles(outputDirectory, channelId);  // Xóa file nếu có lỗi
             updateChannels(outputDirectory, channelName);
-            processMap.remove(channelBase64);  // Xóa process khỏi map
+            processMap.remove(channelId);  // Xóa process khỏi map
         } catch (IOException | InterruptedException e) {
             System.err.println("Error reading FFmpeg output: " + e.getMessage());
             updateChannels(outputDirectory, channelName);
@@ -81,8 +81,8 @@ public class FFMpegStreamConverter {
         }
     }
 
-    private static void cleanUpFiles(String outputDirectory, String channelBase64) {
-        Path directoryPath = Paths.get(outputDirectory, channelBase64);
+    private static void cleanUpFiles(String outputDirectory, String channelId) {
+        Path directoryPath = Paths.get(outputDirectory, channelId);
         try {
             if (Files.exists(directoryPath)) {
                 // Duyệt và xóa toàn bộ file trong thư mục và thư mục con

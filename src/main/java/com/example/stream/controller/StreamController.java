@@ -37,16 +37,6 @@ public class StreamController {
         return new ResponseEntity<>(ResponseHandler.success(FFMpegStreamConverter.listProcessChannel()), HttpStatus.OK);
     }
 
-    @PostMapping("startStreamChannel")
-    public ResponseEntity<ResponseHandler> startSteamChannel(@RequestBody StreamDto streamDto) throws IOException {
-//        boolean valid = new TokenService().validateToken(streamDto.getToken());
-//        if (!valid) {
-//            return new ResponseEntity<>(ResponseHandler.errorString("Token invalid or expired",400), HttpStatus.BAD_REQUEST);
-//        }
-        String stream = this.streamService.startStreamChannel(streamDto);
-        return new ResponseEntity<>(ResponseHandler.success(stream), HttpStatus.OK);
-    }
-
     @PostMapping("/stopStreamChannel")
     public ResponseEntity<ResponseHandler> stopStreamChannel(@RequestBody StreamDto streamDto) {
 //        boolean valid = new TokenService().validateToken(streamDto.getToken());

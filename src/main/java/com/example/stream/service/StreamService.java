@@ -75,28 +75,13 @@ public class StreamService {
         String extractedStreamURL = "";
         for (ObjectNode currentNode : listChannel) {
             extractedStreamURL = currentNode.get("streamUrl").asText();
-            String channelBase64 = formatChannelName(currentNode.get("name").asText());
-            FFMpegStreamConverter.startStream(extractedStreamURL, outputDirectory, channelBase64, currentNode.get("name").asText());
+            FFMpegStreamConverter.startStream(extractedStreamURL, outputDirectory, currentNode.get("id").asText(), currentNode.get("name").asText());
         }
-    }
-
-
-    public String startStreamChannel(StreamDto streamDto) throws IOException {
-        List<ObjectNode> listChannel = readChannelsFromFile(true);
-        String extractedStreamURL = "";
-        String channelBase64 = formatChannelName(streamDto.getChannel());
-        for (ObjectNode currentNode : listChannel) {
-            if (currentNode.get("name").asText().equals(streamDto.getChannel())) {
-                extractedStreamURL = currentNode.get("streamUrl").asText();
-                break;
-            }
-        }
-        return channelBase64;
     }
 
     public String stopStreamChannel(StreamDto streamDto) {
-        String channelBase64 = formatChannelName(streamDto.getChannel());
-        boolean stop = FFMpegStreamConverter.stopStream(channelBase64);
+        String channelId = formatChannelName(streamDto.getChannel());
+        boolean stop = FFMpegStreamConverter.stopStream(channelId);
         if (stop) {
             return "Stream stopped successfully for channel: " + streamDto.getChannel();
         } else {
